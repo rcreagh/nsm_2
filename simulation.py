@@ -7,7 +7,7 @@ If a node is in state -1, it is immune to infection."""
 import networkx as nx
 import random
 
-N_OF_EMPLOYEES = 5000 # Number of nodes (employees in the company)
+N_EMPLOYEES = 5000
 PROBABILITY_OF_EDGE_EXISTENCE = 0.05
 PROBABILITY_OF_INFECTION = 0.05
 N_TIMESTEPS = 5
