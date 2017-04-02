@@ -7,7 +7,7 @@ If a node is in state -1, it is immune to infection."""
 import networkx as nx
 import random
 
-N = 5000 # Number of nodes (employees in the company)
+N_OF_EMPLOYEES = 5000 # Number of nodes (employees in the company)
 PROBABILITY_OF_EDGE_EXISTENCE = 0.05
 PROBABILITY_OF_INFECTION = 0.05
 N_TIMESTEPS = 5
@@ -50,7 +50,7 @@ def update_infection_status(G):
         G.node[user]["state"] = 1
 
 def main():
-    G = nx.erdos_renyi_graph(N, PROBABILITY_OF_EDGE_EXISTENCE)
+    G = nx.erdos_renyi_graph(N_OF_EMPLOYEES, PROBABILITY_OF_EDGE_EXISTENCE)
     infection_init(G)
     for i in range(N_TIMESTEPS):
         update_infection_status(G)
