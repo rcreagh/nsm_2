@@ -13,7 +13,7 @@ N_EMPLOYEES = 5000
 EDGE_EXISTENCE_PROBABILITY = 0.1
 PROBABILITY_OF_INFECTION = 0.5
 N_TIMESTEPS = 10
-PROPORTION_OF_WINDOWS_OS_USERS = 0.95
+WINDOWS_OS_USER_PROPORTION = 0.95
 N_INIT_INFECTED_USERS = 1
 PREVIOUSLY_INFECTED_USERS = set()
 
@@ -28,7 +28,7 @@ def infection_init(G):
     for u in G.nodes():
         G.node[u]["state"] = 0
         rand = random.random()
-        if rand <= PROPORTION_OF_WINDOWS_OS_USERS:
+        if rand <= WINDOWS_OS_USER_PROPORTION:
             G.node[u]["OS"] = "Windows"
         else:
             G.node[u]["OS"] = "Linux"

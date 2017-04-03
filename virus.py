@@ -6,8 +6,8 @@ import networkx as nx
 def advance():
     """Advance the system by one time period.
     """
-    
-    #first loop captures changes made in a time period but does not apply them
+
+    # first loop captures changes made in a time period but does not apply them
     for V in G.nodes():
         # only living, infected nodes can affect population
         if infected[V] and not dead[V]:
@@ -22,8 +22,8 @@ def advance():
                 newly_recovered[V] = True
             elif eggs < recover + die:
                 newly_dead[V] = True
-                
-    # the second loop applies changes at the end of the time period            
+
+    # the second loop applies changes at the end of the time period
     for V in G.nodes():
         if newly_infected[V]:
             infected[V] = True
@@ -69,7 +69,7 @@ for V in G.nodes():
     infected[V] = False
     newly_infected[V] = False
     newly_recovered[V] = False
-    newly_dead[V] = False    
+    newly_dead[V] = False
 infected['A'] = True
 immune['C'] = True
 immune['F'] = True
@@ -77,9 +77,8 @@ immune['F'] = True
 # run simulation:
 for i in range(100):
     advance()
-    
+
 # get results
 print("Person\tInfected  Immune  Dead")
 for V in G.nodes():
     print("{}\t{}\t  {}\t  {}".format(V, infected[V], immune[V], dead[V]))
-
