@@ -10,7 +10,6 @@ import networkx as nx
 import random
 
 N_EMPLOYEES = 5000
-EDGE_EXISTENCE_PROBABILITY = 0.1
 PROBABILITY_OF_INFECTION = 0.5
 N_TIMESTEPS = 10
 WINDOWS_OS_USER_PROPORTION = 0.95
@@ -66,7 +65,8 @@ def update_infection_status(G):
 
 
 def main():
-    G = nx.erdos_renyi_graph(N_EMPLOYEES, EDGE_EXISTENCE_PROBABILITY)
+    #G = nx.erdos_renyi_graph(N_EMPLOYEES, EDGE_EXISTENCE_PROBABILITY)
+    G = nx.powerlaw_cluster_graph(N_EMPLOYEES, 50, 0.1, 1)
     infection_init(G)
     for i in range(N_TIMESTEPS):
         update_infection_status(G)
