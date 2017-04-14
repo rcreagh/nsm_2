@@ -25,6 +25,7 @@ SimulationResult = collections.namedtuple("SimulationResult", (
 
 
 class Status(enum.Enum):
+  """Enum for infection statuses."""
   INFECTED = 1
   RESISTANT = 2
   RECOVERED = 3
@@ -41,9 +42,13 @@ class VirusSimulation:
   def __init__(self, graph, mortality_rate=.2, time_to_death=25,
                time_to_recovery=25, communication_time=1,
                resistant_proportion=.1, max_iterations=100000,
-               modify_graph=False):
+               modify_graph=False, relationship_scores=None, weighted=False):
+    if weighted and relationship_scores is None:
+      raise ValueError(
+          "Cannot use weighted version without relationship scores.")
     self.graph = graph
     self.n_nodes = len(self.graph.nodes())
+    self.relationship_scores = relationship_scores
     self.connected_components = networkx.number_connected_components(graph)
     # Stores infection status of the nodes. Stored here to prevent modification
     # of passed in graph. Stops us from having to reinitalize or copy graphs.
@@ -56,6 +61,7 @@ class VirusSimulation:
     self.resistant_proportion = resistant_proportion
     self.max_iterations = max_iterations
     self.modify_graph = modify_graph
+    self.weighted = weighted
     self.time = 0
     # Stats recording
     self.resistant = 0
@@ -95,13 +101,33 @@ class VirusSimulation:
     if self.node_status[node] == Status.INFECTED:
       # Select a random neighbor if you have any and infect them if possible.
       if len(self.graph.neighbors(node)) > 0:
-        target_node = random.choice(self.graph.neighbors(node))
+        target_node = self.select_random_neighbor(node)
         if self.node_status.get(target_node) is None:
           self.infect(target_node)
       # Enqueue another communication from this infected node.
       communication_time = self.next_event(self.communication_time)
       self.pq.put((communication_time, self.communicate, node))
       self.communications += 1
+
+  def select_random_neighbor(self, node):
+    """Chooses which neighbor to communicate to next."""
+    if self.weighted:
+      return self.weighted_random_neighbor(node)
+    return random.choice([
+        neighbor for neighbor in self.graph.neighbors(node) if
+        self.node_status.get(neighbor) != Status.DEAD])
+
+  def weighted_random_neighbor(self, node):
+    """Choose who to meet based on our weighted criteria."""
+    candidates, weights = [], []
+    neighbors = self.graph.neighbors(node)
+    for neighbor in neighbors:
+      if self.node_status.get(neighbor) != Status.DEAD:
+        candidates.append(neighbor)
+        weights.append(self.relationship_scores[node][neighbor])
+    np_weights = numpy.array(weights)
+    return numpy.random.choice(
+        candidates, 1, p=np_weights/np_weights.sum())[0]
 
   def recover(self, node):
     if self.node_status[node] == Status.INFECTED:
@@ -144,12 +170,36 @@ class VirusSimulation:
             self.communications)
 
 
+def relationship_score(graph, node, neighbor):
+  """Compute the relationship score for two nodes in a graph."""
+  a = set(graph.neighbors(node))
+  b = set(graph.neighbors(neighbor))
+  intersection = a.intersection(b)
+  union = a.union(b)
+  return (1 + len(intersection))/(1 + len(union))
+
+
+def generate_relationship_scores(graph):
+  """Compute the relaionship score for all pairs of linked nodes in a graph."""
+  relationship_score_map = {}
+  for node in graph.nodes():
+    relationship_score_map[node] = {}
+    neighbors = graph.neighbors(node)
+    for neighbor in neighbors:
+      relationship_score_map[node].update({
+          neighbor: relationship_score(graph, node, neighbor)})
+  return relationship_score_map
+
+
 if __name__ == "__main__":
   graph = networkx.barabasi_albert_graph(N, M, seed=SEED)
+  relationship_scores = generate_relationship_scores(graph)
   results = []
   for i in range(30):
     try:
-      virus_simulation = VirusSimulation(graph, modify_graph=True)
+      virus_simulation = VirusSimulation(
+          graph, relationship_scores=relationship_scores, modify_graph=True,
+          weighted=True)
       results.append(SimulationResult(*virus_simulation.run_virus()))
     except NoNodesLeftAliveException:
       # If the graph nodes are empty from delete in modify_graph mode.
