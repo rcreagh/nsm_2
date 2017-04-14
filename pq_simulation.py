@@ -19,9 +19,9 @@ SEED = 13378
 
 
 SimulationResult = collections.namedtuple("SimulationResult", (
-    "MortalityRate", "TimeToDeath", "TimeToRecovery", "CommunicationTime",
-    "ResistantProportion", "Time", "Infected", "Resistant", "Recovered",
-    "Dead", "Communication"))
+    "NodeCount", "ConnectedComponentCount", "MortalityRate", "TimeToDeath",
+    "TimeToRecovery", "CommunicationTime", "ResistantProportion", "Time",
+    "Infected", "Resistant", "Recovered", "Dead", "Communication"))
 
 
 class Status(enum.Enum):
@@ -43,6 +43,8 @@ class VirusSimulation:
                resistant_proportion=.1, max_iterations=100000,
                modify_graph=False):
     self.graph = graph
+    self.n_nodes = len(self.graph.nodes())
+    self.connected_components = networkx.number_connected_components(graph)
     # Stores infection status of the nodes. Stored here to prevent modification
     # of passed in graph. Stops us from having to reinitalize or copy graphs.
     self.node_status = {}
@@ -61,11 +63,10 @@ class VirusSimulation:
     self.recoveries = 0
     self.infections = 0
     self.communications = 0
-    if len(self.graph.nodes()) == 0:
+    if self.n_nodes == 0:
       raise NoNodesLeftAliveException()
     # We infect the first node.
-    self.infect(random.choice(self.graph.nodes())
-, True)
+    self.infect(random.choice(self.graph.nodes()), True)
 
   def next_event(self, exponential_mean):
     return self.time + numpy.random.exponential(exponential_mean)
@@ -115,7 +116,9 @@ class VirusSimulation:
         self.graph.remove_node(node)
 
   def input_parameters(self):
-    return [self.mortality_rate,
+    return [self.n_nodes,
+            self.connected_components,
+            self.mortality_rate,
             self.time_to_death,
             self.time_to_recovery,
             self.communication_time,
@@ -126,7 +129,7 @@ class VirusSimulation:
       timestep, function, node = self.pq.get()
       self.time = timestep
       function(node)
-    print("Final time = %s" % (self.time))
+    print("Iteration final time = %s" % (self.time))
     print(("%d infections, %d resistant, %d recovered, %d dead "
            "%d communications") % (
         self.infections, self.resistant, self.recoveries, self.deaths,
