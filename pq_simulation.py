@@ -5,6 +5,7 @@
 # Keep sorted alphabetically.
 import collections
 import enum
+import matplotlib.pyplot as plt
 import networkx
 import numpy
 import os
@@ -32,7 +33,7 @@ class Status(enum.Enum):
   RESISTANT = 2
   RECOVERED = 3
   DEAD = 4
-
+  UNTOUCHED = 5
 
 class NoNodesLeftAliveException(Exception):
   """Exception raised when there are no nodes left in the passed in graph."""
@@ -44,7 +45,8 @@ class VirusSimulation:
   def __init__(self, graph, mortality_rate=.2, time_to_death=25,
                time_to_recovery=25, communication_time=1,
                resistant_proportion=.1, max_iterations=100000,
-               modify_graph=False, relationship_scores=None, weighted=False):
+               modify_graph=False, relationship_scores=None, weighted=False,
+               plot_shape=False, plot_interval = 50):
     if weighted and relationship_scores is None:
       raise ValueError(
           "Cannot use weighted version without relationship scores.")
@@ -64,6 +66,9 @@ class VirusSimulation:
     self.max_iterations = max_iterations
     self.modify_graph = modify_graph
     self.weighted = weighted
+    self.plot_shape = plot_shape
+    self.plot_interval = plot_interval
+    self.plot_counter = plot_interval
     self.time = 0
     # Stats recording
     self.resistant = 0
@@ -73,8 +78,13 @@ class VirusSimulation:
     self.communications = 0
     if self.n_nodes == 0:
       raise NoNodesLeftAliveException()
+    for node in self.graph.nodes():
+        self.node_status[node] = Status.UNTOUCHED
     # We infect the first node.
-    self.infect(random.choice(self.graph.nodes()), True)
+    self.patient_zero = random.choice(self.graph.nodes())
+    self.infect(self.patient_zero, True)
+    if self.plot_shape:
+        self.plot_graph()
 
   def next_event(self, exponential_mean):
     return self.time + numpy.random.exponential(exponential_mean)
@@ -104,7 +114,7 @@ class VirusSimulation:
       # Select a random neighbor if you have any and infect them if possible.
       if len(self.graph.neighbors(node)) > 0:
         target_node = self.select_random_neighbor(node)
-        if self.node_status.get(target_node) is None:
+        if self.node_status.get(target_node) == Status.UNTOUCHED:
           self.infect(target_node)
       # Enqueue another communication from this infected node.
       communication_time = self.next_event(self.communication_time)
@@ -157,11 +167,16 @@ class VirusSimulation:
       timestep, function, node = self.pq.get()
       self.time = timestep
       function(node)
+      if self.plot_shape and self.time >= self.plot_counter:
+        self.plot_graph()
+        self.plot_counter += self.plot_interval
     print("Iteration final time = {}".format(self.time))
     print(("{} infections, {} resistant, {} recovered, {} dead "
            "{} communications").format(
         self.infections, self.resistant, self.recoveries, self.deaths,
         self.communications))
+    if self.plot_shape:
+      self.plot_graph()
     # This returns all the data regarding this simulation.
     return (*self.input_parameters(),
             self.time,
@@ -170,7 +185,30 @@ class VirusSimulation:
             self.recoveries,
             self.deaths,
             self.communications)
-
+            
+  def plot_graph(self):
+    node_colors = {
+      Status.INFECTED: "orange",
+      Status.RESISTANT: "green",
+      Status.RECOVERED: "cyan",
+      Status.DEAD: "red",
+      Status.UNTOUCHED: "blue"}
+    nc = [node_colors.get(n) for n in self.node_status.values()]
+    nodes = networkx.draw_networkx_nodes(self.graph, self.plot_shape,
+                                         node_size=10, node_color=nc)
+    nodes.set_edgecolor("k")
+    # Plot patient zero node on top of all other nodes
+    color = node_colors[self.node_status[self.patient_zero]]
+    nodes = networkx.draw_networkx_nodes(self.graph, self.plot_shape,
+                                         nodelist=[self.patient_zero],
+                                         node_size=100, node_shape="*",
+                                         node_color=color)
+    nodes.set_edgecolor("k")
+    networkx.draw_networkx_edges(self.graph, self.plot_shape)
+    plt.axis=("off")
+    #plt.show()
+    plt.savefig("{:.0f}.pdf".format(self.time), format="pdf")
+    plt.clf()
 
 def relationship_score(graph, node, neighbor):
   """Compute the relationship score for two nodes in a graph."""
@@ -212,12 +250,26 @@ if __name__ == "__main__":
 
   print("Random Data - Barabási Albert model:")
   graph = networkx.barabasi_albert_graph(N, M, seed=SEED)
-  print(test(graph))
+  result = test(graph)
+  print(result)
 
-  print("\nReal-world Data - Facebook graph:")
+  # Get real-world data
   url = "https://snap.stanford.edu/data/facebook_combined.txt.gz"
   fname = url.rsplit('/', 1)[-1]
   if not os.path.exists(fname):
-    urllib.request.urlretrieve(url, fname)
+    urllib.request.urlretrieve(url, fname)  
+  
+  print("\nReal-world Data - Facebook graph:")
   graph = networkx.read_edgelist(fname, nodetype=int)
-  print(test(graph))
+  result = test(graph)
+  print(result)
+  
+  print("\nGenerating plots - this may take some time")
+  graph = networkx.read_edgelist(fname, nodetype=int)
+  relationship_scores = generate_relationship_scores(graph)
+  results = []
+  virus_simulation = VirusSimulation(
+    graph, relationship_scores=relationship_scores, modify_graph=False,
+    weighted=True, plot_shape=networkx.spring_layout(graph))
+  results.append(SimulationResult(*virus_simulation.run_virus()))
+  dataframe = pandas.DataFrame(results)  
