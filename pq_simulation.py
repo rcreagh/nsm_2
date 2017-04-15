@@ -162,12 +162,6 @@ class VirusSimulation:
            "{} communications").format(
         self.infections, self.resistant, self.recoveries, self.deaths,
         self.communications))
-    '''
-    print("Iteration final time = %s" % (self.time))
-    print(("%d infections, %d resistant, %d recovered, %d dead "
-           "%d communications") % (
-        self.infections, self.resistant, self.recoveries, self.deaths,
-        self.communications))'''
     # This returns all the data regarding this simulation.
     return (*self.input_parameters(),
             self.time,
