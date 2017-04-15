@@ -7,9 +7,11 @@ import collections
 import enum
 import networkx
 import numpy
+import os
 import pandas
 import queue
 import random
+import urllib.request
 
 
 # For the random graph
@@ -155,11 +157,17 @@ class VirusSimulation:
       timestep, function, node = self.pq.get()
       self.time = timestep
       function(node)
+    print("Iteration final time = {}".format(self.time))
+    print(("{} infections, {} resistant, {} recovered, {} dead "
+           "{} communications").format(
+        self.infections, self.resistant, self.recoveries, self.deaths,
+        self.communications))
+    '''
     print("Iteration final time = %s" % (self.time))
     print(("%d infections, %d resistant, %d recovered, %d dead "
            "%d communications") % (
         self.infections, self.resistant, self.recoveries, self.deaths,
-        self.communications))
+        self.communications))'''
     # This returns all the data regarding this simulation.
     return (*self.input_parameters(),
             self.time,
@@ -192,17 +200,30 @@ def generate_relationship_scores(graph):
 
 
 if __name__ == "__main__":
-  graph = networkx.barabasi_albert_graph(N, M, seed=SEED)
-  relationship_scores = generate_relationship_scores(graph)
-  results = []
-  for i in range(30):
-    try:
-      virus_simulation = VirusSimulation(
+
+  def test(graph):
+    relationship_scores = generate_relationship_scores(graph)
+    results = []
+    for i in range(30):
+      try:
+        virus_simulation = VirusSimulation(
           graph, relationship_scores=relationship_scores, modify_graph=True,
           weighted=True)
-      results.append(SimulationResult(*virus_simulation.run_virus()))
-    except NoNodesLeftAliveException:
-      # If the graph nodes are empty from delete in modify_graph mode.
-      continue
-  dataframe = pandas.DataFrame(results)
-  print(dataframe)
+        results.append(SimulationResult(*virus_simulation.run_virus()))
+      except NoNodesLeftAliveException:
+        # If the graph nodes are empty from delete in modify_graph mode.
+        continue
+    dataframe = pandas.DataFrame(results)
+    return dataframe
+
+  print("Random Data - Barabási Albert model:")
+  graph = networkx.barabasi_albert_graph(N, M, seed=SEED)
+  print(test(graph))
+
+  print("\nReal-world Data - Facebook graph:")
+  url = "https://snap.stanford.edu/data/facebook_combined.txt.gz"
+  fname = url.rsplit('/', 1)[-1]
+  if not os.path.exists(fname):
+    urllib.request.urlretrieve(url, fname)
+  graph = networkx.read_edgelist(fname, nodetype=int)
+  print(test(graph))
