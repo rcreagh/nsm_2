@@ -238,7 +238,9 @@ class VirusSimulation:
       for key, color in node_status_color_map.items():
         legend_handles.append(mpatches.Patch(color=color, label=key))
       plt.legend(fontsize=8, handles=legend_handles)
-
+      plt.tick_params(
+          top='off', bottom='off', left='off', right='off', labelleft='off',
+          labelbottom='off')
       plt.title("%s Graph @timestep %d" % (self.plot_name, self.time))
       plt.axis=("off")
       if SHOW_PLOT:
