@@ -1,3 +1,5 @@
 *.swp
 *~
 *.pyc
+*.pdf
+*.txt.gz
