@@ -382,7 +382,7 @@ if __name__ == "__main__":
                                               "fb_weighting_analysis.csv", 10)
     if RANDOM_GRAPH:
       random_dataframe = weighting_system_analysis(
-          random_graph, "random_weighting_analysis.csv", 10)
+          random_graph, "random_weighting_analysis.csv", 1000)
 
   if REPEATED_VIRUSES:
     if RANDOM_GRAPH:
