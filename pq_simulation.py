@@ -24,16 +24,16 @@ SHOW_PLOT = False
 SimulationResult = collections.namedtuple("SimulationResult", (
     "NodeCount", "ConnectedComponentCount", "MortalityRate", "TimeToDeath",
     "TimeToRecovery", "CommunicationTime", "ResistantProportion", "Time",
-    "Infected", "Resistant", "Recovered", "Dead", "Communication"))
+    "Infected", "Resistant", "Recovered", "Dead", "Communication", "Weighted"))
 
 
 class Status(enum.Enum):
   """Enum for infection statuses."""
-  INFECTED = 1
-  RESISTANT = 2
-  RECOVERED = 3
-  DEAD = 4
-  UNTOUCHED = 5
+  UNEXPOSED = 1
+  INFECTED = 2
+  RESISTANT = 3
+  RECOVERED = 4
+  DEAD = 5
 
 
 class NoNodesLeftAliveException(Exception):
@@ -83,7 +83,7 @@ class VirusSimulation:
     if self.n_nodes == 0:
       raise NoNodesLeftAliveException()
     for node in self.graph.nodes():
-      self.node_status[node] = Status.UNTOUCHED
+      self.node_status[node] = Status.UNEXPOSED
     # We infect the first node.
     self.patient_zero = random.choice(self.graph.nodes())
     self.infect(self.patient_zero, True)
@@ -117,7 +117,7 @@ class VirusSimulation:
       # Select a random neighbor if you have any and infect them if possible.
       target_node = self.select_random_neighbor(node)
       if target_node is not None:
-        if self.node_status.get(target_node) == Status.UNTOUCHED:
+        if self.node_status.get(target_node) == Status.UNEXPOSED:
           self.infect(target_node)
         # Enqueue another communication from this infected node.
         communication_time = self.next_event(self.communication_time)
@@ -207,7 +207,8 @@ class VirusSimulation:
             self.resistant,
             self.recoveries,
             self.deaths,
-            self.communications)
+            self.communications,
+            self.weighted)
 
   def plot_graph(self, force=False):
     """Decides wheter we need to generate plots.
@@ -220,7 +221,7 @@ class VirusSimulation:
         Status.RESISTANT: "green",
         Status.RECOVERED: "cyan",
         Status.DEAD: "red",
-        Status.UNTOUCHED: "blue"}
+        Status.UNEXPOSED: "blue"}
       node_colors = [node_status_color_map.get(node) for node in
                      self.node_status.values()]
       nodes = networkx.draw_networkx_nodes(self.graph, self.plot_shape,
@@ -318,6 +319,28 @@ def repeated_virus_simulation(graph, repetitions=30):
   return dataframe
 
 
+def weighting_system_analysis(graph, file_name, repetitions=30):
+  relationship_scores = generate_relationship_scores(graph)
+  results = []
+  for i in range(repetitions):
+    print("%s Complete" % (i/repetitions))
+    weighted_virus_simulation = VirusSimulation(
+        graph, relationship_scores=relationship_scores,
+        weighted=True)
+    unweighted_virus_simulation = VirusSimulation(
+        graph, relationship_scores=relationship_scores,
+        weighted=False)
+    print("True"),
+    results.append(SimulationResult(
+        *weighted_virus_simulation.run_virus()))
+    print("False"),
+    results.append(SimulationResult(
+        *unweighted_virus_simulation.run_virus()))
+  dataframe = pandas.DataFrame(results)
+  dataframe.to_csv(file_name)
+  return dataframe
+
+
 def get_facebook_graph():
   """Get real-world facebook data as a networkx graph.
 
@@ -333,11 +356,14 @@ def get_facebook_graph():
   return networkx.read_edgelist(file_name, nodetype=int)
 
 
-REPEATED_VIRUSES = True
-PLOT_VIRUS = True
+# Program modes to run.
+WEIGHTING_ANALYSIS = True
+REPEATED_VIRUSES = False
+PLOT_VIRUS = False
 
+# Graph to use.
 RANDOM_GRAPH = True
-FACEBOOK_GRAPH = True
+FACEBOOK_GRAPH = False
 
 if __name__ == "__main__":
 
@@ -349,6 +375,14 @@ if __name__ == "__main__":
 
   random_graph = networkx.barabasi_albert_graph(nodes, edges_per_node,
                                                 seed=SEED)
+
+  if WEIGHTING_ANALYSIS:
+    if FACEBOOK_GRAPH:
+      fb_dataframe = weighting_system_analysis(facebook_graph,
+                                              "fb_weighting_analysis.csv", 10)
+    if RANDOM_GRAPH:
+      random_dataframe = weighting_system_analysis(
+          random_graph, "random_weighting_analysis.csv", 10)
 
   if REPEATED_VIRUSES:
     if RANDOM_GRAPH:
