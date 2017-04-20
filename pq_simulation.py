@@ -1,7 +1,13 @@
 #!/usr/bin/python3
 """Priority Queue based simulation. The priority queue stores the events that
    are due to occur. Creates a virus simulation modeling the spread through the
-   population."""
+   population.
+   
+   AUTHORS:
+   Robert Creagh, 15200115
+   Max Buckley, 15203431
+   Sean Tully, 15205062
+   """
 # Keep sorted alphabetically.
 import copy
 import collections
